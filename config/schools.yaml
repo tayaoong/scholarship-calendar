@@ -1,0 +1,84 @@
+# 학교별 장학 공지 게시판 설정
+# - notice_url: 장학 공지 "목록" 페이지 주소 (상세 글 주소 아님)
+# - verified: true = 실제 주소 확인됨 / false = 직접 브라우저로 열어보고 채워야 함
+# - enabled: false 인 학교는 수집에서 건너뜀
+#
+# 학교 하나 추가 = 아래 형식으로 한 덩어리 복사해서 URL만 바꾸면 끝.
+# 코드는 건드릴 필요 없음 (AI가 공지 본문에서 마감일·자격·금액을 뽑음).
+
+schools:
+  - id: ajou
+    name: 아주대학교
+    region: 경기 수원시
+    notice_url: https://www.ajou.ac.kr/kr/ajou/notice_scholarship.do
+    verified: true
+    enabled: true
+
+  - id: skku
+    name: 성균관대학교
+    region: 서울 종로구 / 경기 수원시
+    notice_url: https://www.skku.edu/skku/campus/skk_comm/notice06.do
+    verified: true
+    enabled: true
+
+  # ↓ 아래는 주소 확인 전. 학교 홈페이지 > 공지사항 > 장학 탭을 열고
+  #   주소창 URL을 notice_url 에 붙여넣은 뒤 verified/enabled 를 true 로 바꾸세요.
+  - id: dankook
+    name: 단국대학교
+    region: 경기 용인시 / 충남 천안시
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: hanyang
+    name: 한양대학교
+    region: 서울 성동구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: cau
+    name: 중앙대학교
+    region: 서울 동작구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: khu
+    name: 경희대학교
+    region: 서울 동대문구 / 경기 용인시
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: konkuk
+    name: 건국대학교
+    region: 서울 광진구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: kookmin
+    name: 국민대학교
+    region: 서울 성북구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: dongguk
+    name: 동국대학교
+    region: 서울 중구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+  - id: hongik
+    name: 홍익대학교
+    region: 서울 마포구
+    notice_url: ""
+    verified: false
+    enabled: false
+
+# 목록에서 "장학 공지"로 볼 제목 키워드 / 제외 키워드
+include_keywords: [장학, 장학생, 장학금, 학자금, 지원금, 근로, 생활비, 기숙, 주거]
+exclude_keywords: [결과, 합격자, 선발자 발표, 명단, 수여식]
