@@ -13,7 +13,14 @@ from .store import make_id
 
 API_URL = os.getenv("GOV24_API_URL", "https://api.odcloud.kr/api/gov24/v3/serviceList")
 
-RELEVANT = ["청년", "대학생", "대학원생", "장학", "학자금", "1인가구", "자취", "월세", "주거", "취업", "구직"]
+import re
+
+# 제목이나 지원대상에 이런 말이 있어야 대학생·청년 공고로 봄 (예전엔 공고 전체 글에서 찾아서 엉뚱한 게 많이 섞였음)
+INCLUDE = re.compile(r"청년|대학생|대학원생|재학생|장학|학자금|휴학|졸업예정|사회초년|1인\s*가구|자취|취업준비|구직")
+# 제목에 이런 말이 있으면 대상이 다른 공고라 뺌
+EXCLUDE = re.compile(r"노인|어르신|65세|60세 이상|영유아|임산부|산모|출산|초등|중학생|고등학생|청소년|농업인|농업경영|"
+                     r"어업인|축산|소상공인|사업자|법인|중소기업|장애인|국가유공|보훈|참전|다문화|한부모|기초생활|위기가구|공무원")
+AGE = re.compile(r"(\d{2})\s*세\s*(?:이상)?\s*[~∼\-]\s*(?:만\s*)?(\d{2})\s*세")
 
 F_ID = ["서비스ID", "serviceId", "SVC_ID"]
 F_TITLE = ["서비스명", "serviceName", "SVC_NM"]
@@ -30,9 +37,18 @@ def fetch_raw(page: int = 1, size: int = 500) -> str:
     return http.get(API_URL, params=params).text
 
 
+def _age_fits(text: str) -> bool:
+    """'만 19세~34세' 같은 나이 범위에 20대 중반이 들어가면 청년 대상으로 봄"""
+    m = AGE.search(text or "")
+    return bool(m) and int(m.group(1)) <= 24 <= int(m.group(2)) <= 45
+
+
 def is_relevant(rec: dict) -> bool:
-    blob = " ".join(str(v) for v in rec.values())
-    return any(k in blob for k in RELEVANT)
+    title = pick(rec, F_TITLE, "")
+    target = (pick(rec, F_TARGET, "") or "")[:200]
+    if EXCLUDE.search(title):
+        return False
+    return bool(INCLUDE.search(title) or INCLUDE.search(target) or _age_fits(target))
 
 
 def to_item(rec: dict, today: date) -> dict | None:
@@ -49,8 +65,8 @@ def to_item(rec: dict, today: date) -> dict | None:
         "period_raw": period,
         "deadline": dl.isoformat() if dl else None,
         "region": pick(rec, F_ORG),
-        "amount": pick(rec, F_SUPPORT),
-        "eligibility": pick(rec, F_TARGET),
+        "amount": (pick(rec, F_SUPPORT) or "")[:200],
+        "eligibility": (pick(rec, F_TARGET) or "")[:300],
         "summary": (pick(rec, F_DESC) or "")[:300],
         "confidence": "high" if dl else "low",
     }
@@ -58,16 +74,16 @@ def to_item(rec: dict, today: date) -> dict | None:
 
 def collect(store, max_pages: int = 30, today: date | None = None) -> int:
     today = today or date.today()
-    n = 0
+    found = []
     for page in range(1, max_pages + 1):
         recs = extract_records(fetch_raw(page))
         if not recs:
             break
         for rec in recs:
-            if not is_relevant(rec):
-                continue
-            item = to_item(rec, today)
-            if item:
-                store.upsert(item)
-                n += 1
-    return n
+            if is_relevant(rec):
+                item = to_item(rec, today)
+                if item:
+                    found.append(item)
+    if found:  # 새로 받아온 게 있을 때만 예전 목록을 통째로 바꿈 (끝난 공고·기준 바뀐 공고 정리)
+        store.replace_source("gov24", found)
+    return len(found)
