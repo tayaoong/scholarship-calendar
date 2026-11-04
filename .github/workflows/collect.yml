@@ -59,6 +59,22 @@ jobs:
 
       - run: mkdir -p public && cp data/feed.json public/feed.json
 
+      # 토스에 올릴 앱 파일도 같이 만들어서 같은 주소에 올려둬요 (실패해도 공고 배포는 계속)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 앱 파일 만들기
+        continue-on-error: true
+        working-directory: toss-app
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          export VITE_FEED_URL="https://${OWNER,,}.github.io/${{ github.event.repository.name }}/feed.json"
+          npm install
+          npm run build
+          cp *.ait ../public/
+        env:
+          VITE_AD_GROUP_ID: ${{ vars.AD_GROUP_ID }}
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
