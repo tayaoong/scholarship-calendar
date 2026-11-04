@@ -13,7 +13,10 @@ from .dates import parse_deadline
 from .records import extract_records, pick
 from .store import make_id
 
-API_URL = os.getenv("YOUTH_API_URL", "https://www.youthcenter.go.kr/opi/youthPlcyList.do")
+# 2025년 개편된 주소를 먼저 시도하고, 응답이 비면 예전 주소로 한 번 더 시도
+API_URLS = [u for u in [os.getenv("YOUTH_API_URL"),
+                        "https://www.youthcenter.go.kr/go/ythip/getPlcy",
+                        "https://www.youthcenter.go.kr/opi/youthPlcyList.do"] if u]
 KEY_PARAM = os.getenv("YOUTH_KEY_PARAM", "openApiVlak")
 
 # 필드명 후보 (신·구 버전 모두 커버)
@@ -28,12 +31,20 @@ F_REGION = ["rgtrUpInstCdNm", "rgtrInstCdNm", "zipCd", "polyBizSecd"]
 
 
 def fetch_raw(page: int = 1, size: int = 100, query: str = "") -> str:
-    key = os.environ["YOUTH_API_KEY"]
+    key = os.environ["YOUTH_API_KEY"].strip()  # 붙여넣을 때 딸려온 줄바꿈·공백 제거
     params = {KEY_PARAM: key, "apiKeyNm": key, "pageIndex": page, "pageNum": page,
               "display": size, "pageSize": size, "rtnType": "json"}
     if query:
         params["query"] = query
-    return http.get(API_URL, params=params).text
+    last = ""
+    for url in API_URLS:
+        try:
+            last = http.get(url, params=params).text
+            if extract_records(last):
+                return last
+        except Exception as e:  # 주소가 바뀌었으면 다음 후보로
+            print(f"  온통청년 {url} 실패: {e}")
+    return last
 
 
 def to_item(rec: dict, today: date) -> dict | None:
@@ -59,14 +70,12 @@ def to_item(rec: dict, today: date) -> dict | None:
 
 def collect(store, max_pages: int = 10, today: date | None = None) -> int:
     today = today or date.today()
-    n = 0
+    found = []
     for page in range(1, max_pages + 1):
         recs = extract_records(fetch_raw(page))
         if not recs:
             break
-        for rec in recs:
-            item = to_item(rec, today)
-            if item:
-                store.upsert(item)
-                n += 1
-    return n
+        found += [it for it in (to_item(r, today) for r in recs) if it]
+    if found:
+        store.replace_source("youth", found)
+    return len(found)
