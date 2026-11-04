@@ -41,12 +41,18 @@ def need(env: str) -> bool:
 
 def run_youth(store):
     if need("YOUTH_API_KEY"):
-        print(f"  온통청년: {youth.collect(store)}건")
+        try:
+            print(f"  온통청년: {youth.collect(store)}건")
+        except Exception as e:  # 한 출처가 실패해도 나머지는 계속
+            print(f"  온통청년 실패: {e}")
 
 
 def run_gov24(store):
     if need("GOV24_API_KEY"):
-        print(f"  보조금24(청년·대학생 관련): {gov24.collect(store)}건")
+        try:
+            print(f"  보조금24(청년·대학생 관련): {gov24.collect(store)}건")
+        except Exception as e:
+            print(f"  보조금24 실패: {e}")
 
 
 def run_schools(store, only: str | None = None):
