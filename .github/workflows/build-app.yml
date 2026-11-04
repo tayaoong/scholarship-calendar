@@ -1,0 +1,36 @@
+# 토스에 올릴 앱 파일(naedon-naechat.ait)을 GitHub가 대신 만들어줘요.
+# Actions 탭 > build-app > Run workflow 를 누르면, 끝난 뒤 맨 아래 Artifacts 에서 받을 수 있어요.
+name: build-app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toss-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 공고 데이터 주소 자동 설정
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          echo "VITE_FEED_URL=https://${OWNER,,}.github.io/${{ github.event.repository.name }}/feed.json" >> "$GITHUB_ENV"
+
+      - run: npm install
+
+      - name: 앱 파일 만들기
+        run: npm run build
+        env:
+          VITE_AD_GROUP_ID: ${{ vars.AD_GROUP_ID }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: naedon-naechat-ait
+          path: toss-app/*.ait
