@@ -248,10 +248,15 @@ const AMBIG = new Set(["중구","동구","서구","남구","북구","강서구",
 const NO_STEM = new Set([...AMBIG, "연수구","수영구","사상구","남동구","광산구","동해시","광주시","구리시","보은군","음성군","기장군","중랑구","강남구","강북구","부산진구"]);
 const SGG_FLAT = Object.entries(SIGUNGU).flatMap(([sd,l]) => l.map(g => [sd,g])).sort((a,b) => b[1].length - a[1].length);
 const STEMS = SGG_FLAT.filter(([,g]) => g.length >= 3 && !NO_STEM.has(g)).map(([sd,g]) => [sd, g, g.slice(0,-1)]);
+const URL_SIDO = [[/chungnam|cepa\.or|clehrd|gongju|cbist/,"충남"],[/seoul\.go/,"서울"],[/gg\.go\.kr|gyeonggi/,"경기"],[/busan\.go/,"부산"],
+  [/incheon\.go/,"인천"],[/daegu\.go/,"대구"],[/daejeon\.go/,"대전"],[/ulsan\.go/,"울산"],[/sejong\.go/,"세종"],[/gwangju\.go/,"광주"],[/gangwon/,"강원"],
+  [/chungbuk|cb21/,"충북"],[/jeonbuk/,"전북"],[/jeonnam/,"전남"],[/gyeongbuk|gb\.go\.kr/,"경북"],[/gyeongnam|gne\.go/,"경남"],[/jeju/,"제주"]];
 const sidoRx = sd => SIDO.find(s => s[0]===sd)[1];
 function scopeOf(it){
   const reg = it.region || "", t = `${reg} ${it.title||""}`;
   for (const [sd,g] of SGG_FLAT) if (t.includes(g) && (!AMBIG.has(g) || sidoRx(sd).test(t))) return {sido:sd, sigungu:g};
+  // 2026년 통합된 전남광주통합특별시 → 전남·광주 둘 다에 보여줌
+  if (/전남광주/.test(t)) return {sido:"전남", alt:"광주"};
   for (const [sd,rx] of SIDO) if (rx.test(t)) return {sido:sd};
   // 재단·장학회 이름 맨 앞의 지역명 (예: 재단법인목포인재육성재단 → 목포). '연수원'의 '수원'처럼 중간에 낀 건 무시
   const org = reg.replace(/^[(（]?(재단법인|사단법인|재|사)[)）]?\s*/, "");
@@ -259,6 +264,8 @@ function scopeOf(it){
   // 이름만으론 지역이 안 드러나는 지역 기관
   if (/^남도/.test(org) || /녹색에너지연구원/.test(org)) return {sido:"전남"};
   if (/^고성/.test(org)) return {sido:"경남", sigungu:"고성군"};
+  // 기관명이 '청년정책과'처럼 부서 이름뿐이면 링크 주소로 지역 추정
+  if (/^[가-힣]+과$/.test(reg)) for (const [rx,sd] of URL_SIDO) if (rx.test(it.url||"")) return {sido:sd};
   return null; // 전국 대상
 }
 const sggOptions = (sd, cur) => `<option value="">전체</option>` + (SIGUNGU[sd]||[]).map(g => `<option ${g===cur?"selected":""}>${g}</option>`).join("");
@@ -419,7 +426,7 @@ function match(it){
   if (profile.status==="none" && studentOnly(it)) return false;
   const sc = scopeOf(it);
   if (sc && profile.sido){
-    if (sc.sido !== profile.sido) return false;
+    if (sc.sido !== profile.sido && sc.alt !== profile.sido) return false;
     if (sc.sigungu && profile.sigungu && sc.sigungu !== profile.sigungu) return false;
   }
   return true;
