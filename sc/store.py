@@ -57,6 +57,13 @@ class Store:
         )
         self.conn.commit()
 
+    def replace_source(self, source: str, items: list[dict]) -> None:
+        """한 출처(gov24, youth)의 공고를 이번에 받아온 것으로 통째로 교체"""
+        self.conn.execute("DELETE FROM items WHERE source=?", (source,))
+        self.conn.commit()
+        for it in items:
+            self.upsert(it)
+
     def feed(self, today: date | None = None, include_undated: bool = True) -> list[dict]:
         """마감 안 지난 항목을 마감 임박 순으로. 마감일 모르는 건 맨 뒤."""
         today_s = (today or date.today()).isoformat()
