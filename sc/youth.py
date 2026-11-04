@@ -68,11 +68,16 @@ def to_item(rec: dict, today: date) -> dict | None:
     }
 
 
-def collect(store, max_pages: int = 10, today: date | None = None) -> int:
+def collect(store, max_pages: int = 30, today: date | None = None) -> int:
     today = today or date.today()
     found = []
     for page in range(1, max_pages + 1):
-        recs = extract_records(fetch_raw(page))
+        # 마지막 페이지 다음은 400 오류나 빈 응답이 와요 → 거기서 멈추고 앞에서 받은 건 살림
+        try:
+            recs = extract_records(fetch_raw(page))
+        except Exception as e:
+            print(f"  온통청년 {page}쪽에서 멈춤: {e}")
+            break
         if not recs:
             break
         found += [it for it in (to_item(r, today) for r in recs) if it]
